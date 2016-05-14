@@ -1,0 +1,12 @@
+ColorsAndFontsPreferencePage.expandedCategories=Torg.eclipse.xtend.ui.presentation
+ColorsAndFontsPreferencePage.selectedElement=Torg.eclipse.ui.workbenchMisc
+eclipse.preferences.version=1
+org.eclipse.jdt.junit.failurePaneFont=1|.Helvetica Neue DeskInterface|14.0|0|COCOA|1|.HelveticaNeueDeskInterface-Regular;
+org.eclipse.jdt.ui.PropertiesFileEditor.textfont=1|Monaco|14.0|0|COCOA|1|Monaco;
+org.eclipse.jdt.ui.editors.textfont=1|Monaco|14.0|0|COCOA|1|Monaco;
+org.eclipse.jdt.ui.javadocfont=1|.Helvetica Neue DeskInterface|14.0|0|COCOA|1|.HelveticaNeueDeskInterface-Regular;
+org.eclipse.jface.dialogfont=1|.Helvetica Neue DeskInterface|12.0|0|COCOA|1|.HelveticaNeueDeskInterface-Regular;
+org.eclipse.jface.headerfont=1|Lucida Grande|13.0|1|COCOA|1|LucidaGrande-Bold;
+org.eclipse.jface.textfont=1|Monaco|15.0|0|COCOA|1|Monaco;
+org.eclipse.ui.workbench.texteditor.blockSelectionModeFont=1|Monaco|14.0|0|COCOA|1|Monaco;
+org.eclipse.xtend.ui.editors.textfont=1|Monaco|14.0|0|COCOA|1|Monaco;

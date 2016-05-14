@@ -1,0 +1,325 @@
+grammar com.tiagoreul.pascalc.Pascal hidden(WS, ML_COMMENT, SL_COMMENT) 
+
+import "http://www.eclipse.org/emf/2002/Ecore" as ecore
+
+generate pascal "http://www.tiagoreul.com/pascalc/Pascal"
+
+/******************* Programs and Blocks *******************/
+Program: heading=ProgramHeading body=Block DOT;
+
+ProgramHeading: 'program' name=ID LPAREN paramList=IdentifierList RPAREN SEMICOLON;
+
+Block: declarationPart=DeclarationPart statementPart=StatementPart;
+
+DeclarationPart:
+    labelDeclarationPart=(LabelDeclarationPart)?
+    constantDefinitionPart=(ConstantDefinitionPart)?
+    typeDefinitionPart=(TypeDefinitionPart)?
+    variableDeclarationPart=(VariableDeclarationPart)?
+    procedureAndFunctionDeclarationPart=ProcedureAndFunctionDeclarationPart
+;
+
+LabelDeclarationPart: 'label' labels+=Label (COMMA labels+=Label )* SEMICOLON;
+
+ConstantDefinitionPart: 'const' constantDefinitions+=ConstantDefinition SEMICOLON (constantDefinitions+=ConstantDefinition SEMICOLON)*;
+
+ConstantDefinition: name=ID EQ value=Constant;
+
+TypeDefinitionPart: 'type' types+=TypeDefinition SEMICOLON (types+=TypeDefinition SEMICOLON)*;
+
+TypeDefinition: name=ID EQ definition=Type;
+
+VariableDeclarationPart:'var' variables+=VariableDeclaration SEMICOLON (variables+=VariableDeclaration SEMICOLON)*;
+
+VariableDeclaration: name=ID/*TODO: IdentifierList*/ COLON type=Type; 
+
+ProcedureAndFunctionDeclarationPart:
+    {ProcedureAndFunctionDeclarationPart} 
+    ((procedureDeclarations+=ProcedureDeclaration | functionDeclarations+=FunctionDeclaration) SEMICOLON)*
+;
+
+ProcedureDeclaration: 'procedure' name=ID (formalParameterList=FormalParameterList)? SEMICOLON body=Block; 
+
+FunctionDeclaration: 'function' name=ID (formalParameterList=FormalParameterList)? COLON type=ResultType SEMICOLON body=Block;
+
+//Directive: 
+//    'forward'
+//    |'compiler-defined-directives';
+
+StatementPart: 'begin' statementSequence=StatementSequence 'end';
+
+/******************* Procedure and Function Definitions *******************/
+
+ResultType: type=Type;
+
+FormalParameterList:
+    LPAREN formalParameterSections+=FormalParameterSection (SEMICOLON formalParameterSections+=FormalParameterSection)* RPAREN 
+;
+
+FormalParameterSection: 
+    valueSection=ValueParameterSection
+    | variableSection=VariableParameterSection
+;
+
+ValueParameterSection: identifierList=IdentifierList COLON type=ParameterType;
+
+VariableParameterSection: 'var' identifierList=IdentifierList COLON type=ParameterType;
+
+ParameterType:
+    type=Type
+    | schema=ConformantArraySchema
+;
+
+ConformantArraySchema:
+    PackedConformantArraySchema
+    | UnpackedConformantArraySchema
+;
+
+PackedConformantArraySchema: 'packed' 'array' LBRACKET bound=BoundSpecification RBRACKET 'of' ID;
+
+UnpackedConformantArraySchema:
+    'array' LBRACKET bounds+=BoundSpecification (SEMICOLON bounds+=BoundSpecification)* RBRACKET 
+    'of' (typeName=ID|schema=ConformantArraySchema)
+;
+
+BoundSpecification: lower=ID TWODOTS higher=ID COLON type=ID;
+
+/******************* Statements *******************/
+
+StatementSequence: statements+=Statement (SEMICOLON statements+=Statement)*;
+
+Statement: (label=Label COLON)? statement=(SimpleStatement | StructuredStatement);
+
+SimpleStatement: {SimpleStatement} (statement=AssignmentStatement | statement=ProcedureStatement | statement=GotoStatement)?;
+
+AssignmentStatement: variable=[VariableDeclaration] ASSIGN value=Expression;
+
+ProcedureStatement: name=[ProcedureDeclaration] parameterList=(ActualParameterList);
+
+GotoStatement: 'goto' label=Label;
+
+StructuredStatement:
+    CompoundStatement
+    | RepetitiveStatement
+    | ConditionalStatement
+    | WithStatement
+;
+
+CompoundStatement: 'begin' StatementSequence 'end';
+
+RepetitiveStatement:
+    WhileStatement
+    | RepeatStatement
+    | ForStatement
+;
+
+WhileStatement: 'while' condition=Expression 'do' statement=Statement;
+
+RepeatStatement: 'repeat' statement=StatementSequence 'until' condition=Expression;
+
+ForStatement:
+    'for' (counter=ForCounter ASSIGN counterInitialValue=InitialExpression) ('to' | 'downto')
+    counterFinalValue=FinalExpression 'do' statement=Statement;
+
+ForCounter:
+    name=[VariableDeclaration]
+;
+
+InitialExpression returns Expression: Expression;
+
+FinalExpression returns Expression: Expression;
+
+ConditionalStatement:
+    IfStatement 
+    | CaseStatement
+;
+
+IfStatement: 'if' condition=Expression 'then' ifStatement=Statement (=>'else' elseStatement=Statement)?;
+
+CaseStatement:
+    'case' expression=Expression 'of'
+    caselimbs+=CaseLimb (SEMICOLON caselimbs+=CaseLimb)* (SEMICOLON)?
+    'end'
+;
+
+CaseLimb: labelList=CaseLabelList COLON statement=Statement;
+    
+CaseLabelList: constants+=Constant (COMMA constants+=Constant)*;
+
+WithStatement: 'with' records+=Variable (COMMA records+=Variable)* 'do' statement=Statement;
+
+ActualParameterList: {ActualParameterList} LPAREN (actualParameters+=ActualParameter ( COMMA actualParameters+=ActualParameter )*)? RPAREN;
+
+ActualParameter:
+    expression=Expression 
+    //| variable=[Variable] 
+    //| functionOrProcedureName=ID // Procedure or function id  
+;
+
+/******************* Expressions *******************/
+
+Expression: simpleExpressions+=SimpleExpression (relops+=RELATIONAL_OPERATOR simpleExpressions+=SimpleExpression)?;
+
+SimpleExpression returns Expression: (sign+=SIGN)? terms+=Term (operators+=ADDITION_OPERATOR terms+=Term)*;
+
+Term returns Expression: factors+=Factor (MULTIPLICATION_OPERATOR factors+=Factor)*;
+
+Factor returns Expression:
+    (=>functionDesignator=FunctionDesignator)
+    |{BooleanLiteral} =>boolean=('true'|'false')
+    |{IntegerLiteral} integer=INTEGER_NUMBER
+    |{RealLiteral} real=REAL_NUMBER
+    |{StringLiteral} string=PASCAL_STRING
+    |{ASet} set=Set
+    |{NilLiteral} nil='nil'
+    |variable=[VariableDeclaration]
+    |{ConstantExpr} constant=[ConstantDefinition] //Constant or bound identifier
+    |{NegatedFactor} 'not' negatedFactor=Factor
+    |LPAREN {Expr} expr=Expression RPAREN
+;
+
+ConstantOrBoundIdentifier:
+    name=[Constant]
+;
+
+
+Variable: name=ID rest=(Variable2)?;
+
+Variable2:
+      (LBRACKET expressionList=ExpressionList RBRACKET) variable2=Variable2
+    | (DOT name=ID) variable2=Variable2
+    | (CARET) variable2=Variable2
+;
+
+Set: LBRACKET elementList=ElementList RBRACKET;
+
+ElementList: {ElementList} (expressions+=Expression (COMMA expressions+=Expression)*)?;
+
+FunctionDesignator: name=[FunctionDeclaration] actualParameterList=(ActualParameterList)/*?*/;
+
+/******************* Types *******************/
+
+Type: 
+    simpleType=SimpleType
+    |structuredType=StructuredType
+    |pointerType=PointerType
+    |name=ID
+;
+
+SimpleType: 
+    =>(primitiveType=PrimitiveType)
+    |subrangeType=SubrangeType 
+    |enumeratedType=EnumeratedType
+    |typeIdentifier=TypeIdentifier
+;
+
+PrimitiveType:
+    name=('boolean'|'char'|'integer'|'real'|'string')
+;
+
+TypeIdentifier:
+    name=[TypeDefinition]
+;
+
+EnumeratedType: LPAREN identifierList=IdentifierList RPAREN;
+
+SubrangeType: lowerBound=Constant TWODOTS higherBound=Constant;
+
+StructuredType: ('packed')? unpackedStructuredType=UnpackedStructuredType;
+
+UnpackedStructuredType:
+    arrayType=ArrayType
+    |recordType=RecordType
+    |setType=SetType
+    |fileType=FileType
+;
+
+ArrayType: 'array' LBRACKET indexTypes+=IndexType (COMMA indexTypes+=IndexType)* RBRACKET 'of' elementType=ElementType;
+
+IndexType: simpleType=SimpleType;
+
+ElementType: elementType=Type;
+
+RecordType: 'record' fieldList=FieldList 'end';
+
+SetType: 'set' 'of' baseType=BaseType;
+
+BaseType: type=Type;
+
+FileType: 'file' 'of' fileComponentType=FileComponentType;
+
+FileComponentType: type=Type;
+
+PointerType: CARET name=ID;
+
+/******************* Record Fields *******************/
+
+FieldList: {FieldList} (((fixedPart=FixedPart (SEMICOLON variantPart=VariantPart)?) | variantPart=VariantPart) (SEMICOLON))?;
+
+FixedPart: recordSections+=RecordSection (SEMICOLON recordSections+=RecordSection)*;
+
+RecordSection: identifierList=IdentifierList COLON type=Type;
+
+VariantPart: 'case' tagField=TagField identifier=ID 'of' variants+=Variant (SEMICOLON variants+=Variant)*;
+
+TagField: {TagField} (tagField=ID COLON)?;
+
+Variant: caseLabelList=CaseLabelList COLON LPAREN fieldList=FieldList RPAREN;
+
+/******************* Variable and Identifier Categories *******************/
+
+/* Low Level Definitions */
+
+IdentifierList: identifiers+=ID (COMMA identifiers+=ID)*;
+
+ExpressionList: expressions+=Expression (COMMA expressions+=Expression)*;
+
+Label: label=INTEGER_NUMBER;
+
+Constant: 
+    (s=SIGN)? name=[ConstantDefinition]
+    |{IntegerLiteral} (s=SIGN)? integer=INTEGER_NUMBER
+    |{RealLiteral}    (s=SIGN)? real=REAL_NUMBER 
+    |{StringLiteral} string=PASCAL_STRING
+;
+
+terminal SIGN: PLUS|MINUS;
+
+terminal RELATIONAL_OPERATOR: '==' | '<>' | '<' | '<=' | '>' | '>=' | 'in';
+
+enum ADDITION_OPERATOR: PLUS | MINUS | OR;
+
+terminal MULTIPLICATION_OPERATOR: '*' | '/' | 'div' | 'mod' | 'and';
+
+terminal INTEGER_NUMBER returns ecore::EInt: (SIGN)? DIGIT+;
+
+terminal REAL_NUMBER returns ecore::EDouble: (SIGN)? DIGIT+ ((DOT DIGIT* (EXPONENT (SIGN)? DIGIT+)?) | (EXPONENT (SIGN)? DIGIT+));
+
+terminal PASCAL_STRING returns ecore::EString: SINGLE_QUOTES ((!"'")|"''")* SINGLE_QUOTES;
+
+terminal fragment PLUS: '+';
+terminal fragment MINUS: '-';
+terminal fragment OR: 'or';
+terminal CARET: '^';
+terminal ASSIGN: ':=';
+terminal fragment DIGIT: ('0'..'9');
+terminal DOT: '.';
+terminal TWODOTS: '..';
+terminal EQ: '=';
+terminal fragment EXPONENT: 'E' | 'e';
+terminal LBRACKET: '[';
+terminal fragment LETTER: ('A'..'Z' | 'a'..'z');
+terminal LPAREN: '(';
+terminal RBRACKET: ']';
+terminal RPAREN: ')';
+terminal SEMICOLON: ';';
+terminal fragment SINGLE_QUOTES: "'";
+terminal COLON: ':';
+terminal COMMA: ',';
+
+terminal ID: LETTER (LETTER|DIGIT)*;
+
+terminal ML_COMMENT : '(*' -> '*)' | '{' -> '}';
+terminal SL_COMMENT     : '//' !('\n'|'\r')* ('\r'? '\n')?;
+
+terminal WS         : (' '|'\t'|'\r'|'\n')+;

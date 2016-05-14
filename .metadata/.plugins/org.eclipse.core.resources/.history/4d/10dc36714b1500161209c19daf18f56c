@@ -1,0 +1,464 @@
+grammar org.xtext.example.mydsl.MyDsl with org.eclipse.xtext.common.Terminals
+
+generate myDsl "http://www.xtext.org/example/mydsl/MyDsl"
+
+import "http://www.eclipse.org/emf/2002/Ecore" as ecore
+
+Model:
+	greetings+=translation_unit*;
+	
+
+translation_unit
+	:External_declaration=external_declaration (Translation_unitR=translation_unitR)? 
+;
+
+translation_unitR
+	:External_declaration=external_declaration (rec += translation_unitR)*
+;
+
+external_declaration
+	:function_definition 
+	|declaration
+;
+	
+
+function_definition
+	:Declaration_specifiers=declaration_specifiers Declarator=declarator Declaration_list=declaration_list Compound_statement=compound_statement 
+	|Declaration_specifiers=declaration_specifiers Declarator=declarator Compound_statement=compound_statement 
+;
+
+declarator
+	:Pointer=pointer dd=direct_declarator 
+	|direct_declarator 
+;
+
+pointer
+	:'*' Type_qualifier_list=type_qualifier_list (rec += pointer)* 
+	|'*' type_qualifier_list 
+	|'*' (rec += pointer)* 
+	|'*' 
+;
+
+type_qualifier_list
+	:Type_qualifier=type_qualifier (Type_qualifier_listR=type_qualifier_listR)? 
+;
+
+type_qualifier
+	:'CONST' 
+	|'RESTRICT' 
+	|'VOLATILE' 
+	|'ATOMIC' 
+;
+
+
+type_qualifier_listR
+	:Type_qualifier=type_qualifier (rec += type_qualifier_listR)* 
+;
+
+direct_declarator
+	:IDENTIFIER (dr=direct_declaratorR)? 
+	|'(' Declarator=declarator ')' (Direct_declaratorR=direct_declaratorR)? 
+;
+
+direct_declaratorR
+	:'[' ']' (rec += direct_declaratorR)* 
+	|'[' '*' ']' (rec += direct_declaratorR)* 
+	|'[' '_Static_assert' Type_qualifier_list=type_qualifier_list Assignment_expression=assignment_expression ']' (rec += direct_declaratorR)* 
+	|'[' '_Static_assert' Assignment_expression=assignment_expression ']' (rec += direct_declaratorR)* 
+	|'[' Type_qualifier_list=type_qualifier_list '*' ']' (rec += direct_declaratorR)* 
+	|'[' Type_qualifier_list=type_qualifier_list '_Static_assert' Assignment_expression=assignment_expression ']' (rec += direct_declaratorR)* 
+	|'[' Type_qualifier_list=type_qualifier_list Assignment_expression=assignment_expression ']' (rec += direct_declaratorR)* 
+	|'[' Type_qualifier_list=type_qualifier_list ']' (rec += direct_declaratorR)* 
+	|'[' Assignment_expression=assignment_expression ']' (rec += direct_declaratorR)* 
+	|'(' Parameter_type_list=parameter_type_list ')' (rec += direct_declaratorR)* 
+	|'(' ')' (rec += direct_declaratorR)* 
+	|'(' Identifier_list=identifier_list ')' (rec += direct_declaratorR)* 
+;
+
+parameter_type_list
+	:parameter_list ',' '...' 
+	|parameter_list 
+;
+
+identifier_list
+	:IDENTIFIER (il=identifier_listR)? 
+;
+
+identifier_listR
+	:',' IDENTIFIER (rec += identifier_listR)*
+;
+
+parameter_list
+	:Parameter_declaration=parameter_declaration (Parameter_listR=parameter_listR)? 
+;
+
+parameter_listR
+	:',' Parameter_declaration=parameter_declaration (rec += parameter_listR)* 
+;
+
+parameter_declaration
+	:Declaration_specifiers2=declaration_specifiers Declarator=declarator 
+	|Declaration_specifiers1=declaration_specifiers Abstract_declarator=abstract_declarator 
+	|declaration_specifiers 
+;
+
+abstract_declarator
+	//:Pointer=pointer Direct_abstract_declarator=direct_abstract_declarator 
+	:pointer 
+	//|direct_abstract_declarator 
+;
+
+declaration_list
+	:Declaration=declaration (Declaration_listR=declaration_listR)? 
+;
+
+declaration_listR
+	:Declaration=declaration (rec += declaration_listR)* 
+;
+
+compound_statement
+	:'{' '}' 
+	|'{' block_item_list '}' 
+;
+
+block_item_list
+	:Block_item=block_item (Block_item_listR=block_item_listR)? 
+;
+
+block_item_listR
+	:Block_item=block_item (rec += block_item_listR)* 
+;
+
+block_item
+	:declaration 
+	|statement 
+;
+
+
+statement
+	:labeled_statement 
+	|compound_statement 
+	|expression_statement 
+	|selection_statement 
+	|iteration_statement 
+	|jump_statement 
+;
+
+jump_statement
+	:'GOTO' IDENTIFIER ';' 
+	|'CONTINUE' ';' 
+	|'BREAK' ';' 
+	|'RETURN' ';' 
+	|'RETURN' expression ';' 
+;
+
+labeled_statement
+	:IDENTIFIER ':' a=statement 
+	|'CASE' Constant_expression=constant_expression ':' Statement=statement 
+	|'DEFAULT' ':' b=statement 
+;
+
+iteration_statement
+	:'WHILE' '(' Expression=expression ')' Statement=statement 
+	|'DO' Statement=statement 'WHILE' '(' Expression=expression ')' ';' 
+	|'FOR' '(' Expression_statement=expression_statement Expression_statement=expression_statement ')' Statement=statement 
+	|'FOR' '(' Expression_statement=expression_statement Expression_statement=expression_statement Expression=expression ')' Statement=statement 
+	|'FOR' '(' Declaration=declaration Expression_statement=expression_statement ')' Statement=statement 
+	|'FOR' '(' Declaration=declaration Expression_statement=expression_statement Expression=expression ')' Statement=statement 
+;
+
+declaration
+	:declaration_specifiers ';' 
+;
+
+declaration_specifiers
+	:type_specifier ds=declaration_specifiers
+	|type_specifier 
+;
+
+selection_statement
+	:'IF' '(' Expression=expression ')' Statement=statement 'ELSE' Statement=statement 
+	|'IF' '(' Expression=expression ')' Statement=statement 
+	|'SWITCH' '(' Expression=expression ')' Statement=statement 
+;
+
+expression_statement
+	:';' 
+	|expression ';' 
+;
+
+expression
+	:Assignment_expression=assignment_expression (ExpressionR=expressionR)? 
+;
+
+expressionR
+	:',' Assignment_expression=assignment_expression (rec += expressionR)* 
+;
+
+//L-01
+conditional_expression
+	:logical_or_expression 
+	|Logical_or_expression=logical_or_expression '?' Expression=expression ':' (rec += conditional_expression)* 
+;
+
+//L-02
+logical_or_expression
+	:Logical_and_expression=logical_and_expression (Logical_or_expressionR=logical_or_expressionR)? 
+;
+
+logical_or_expressionR
+	:'||' Logical_and_expression=logical_and_expression (rec += logical_or_expressionR)* 
+;
+
+//L-03
+logical_and_expression
+	:Inclusive_or_expression=inclusive_or_expression (Logical_and_expressionR=logical_and_expressionR)? 
+;
+
+logical_and_expressionR
+	:'&&' Inclusive_or_expression=inclusive_or_expression (rec += logical_and_expressionR)* 
+;
+
+//L-04
+inclusive_or_expression
+	:Exclusive_or_expression=exclusive_or_expression (Inclusive_or_expressionR=inclusive_or_expressionR)? 
+;
+
+inclusive_or_expressionR
+	:'|' Exclusive_or_expression=exclusive_or_expression (rec += inclusive_or_expressionR)*
+;
+
+//L-05
+exclusive_or_expression
+	:And_expression=and_expression (Exclusive_or_expressionR=exclusive_or_expressionR)? 
+;
+
+exclusive_or_expressionR
+	:'^' And_expression=and_expression (rec += exclusive_or_expressionR)* 
+;
+
+
+and_expressionR
+	:'&' Equality_expression=equality_expression (rec += and_expressionR)* 
+;
+
+//L-07
+and_expression
+	:Equality_expression=equality_expression (And_expressionR=and_expressionR)? 
+;
+
+//L-08
+equality_expression
+	:Relational_expression=relational_expression (Equality_expressionR=equality_expressionR)? 
+;
+
+equality_expressionR
+	:'==' Relational_expression=relational_expression (rec += equality_expressionR)* 
+	|'!=' Relational_expression=relational_expression (rec += equality_expressionR)* 
+;
+
+//L-09
+relational_expression
+	:Shift_expression=shift_expression (re=relational_expressionR)? 
+;
+
+relational_expressionR
+	:'<' Shift_expression=shift_expression (rec += relational_expressionR)* 
+	|'>' Shift_expression=shift_expression (rec += relational_expressionR)* 
+	|'<=' Shift_expression=shift_expression (rec += relational_expressionR)* 
+	|'>=' Shift_expression=shift_expression (rec += relational_expressionR)*
+;
+
+//L-10
+shift_expression
+	:additive_expression (Shift_expressionR=shift_expressionR)? 
+;
+
+shift_expressionR
+	:'<<' Additive_expression=additive_expression (rec += shift_expressionR)* 
+	|'>>' Additive_expression=additive_expression (rec += shift_expressionR)*
+;
+//L-11
+additive_expression
+	:Multiplicative_expression=multiplicative_expression (Additive_expressionR=additive_expressionR)? 
+;
+
+additive_expressionR
+	:'+' Multiplicative_expression=multiplicative_expression (rec += additive_expressionR)* 
+	|'-' Multiplicative_expression=multiplicative_expression (rec += additive_expressionR)* 
+;
+
+multiplicative_expressionR
+	:'*' Cast_expression=cast_expression (rec += multiplicative_expressionR)* 
+	|'/' Cast_expression=cast_expression (rec += multiplicative_expressionR)* 
+	|'%' Cast_expression=cast_expression (rec += multiplicative_expressionR)* 
+;
+//L-12
+multiplicative_expression
+	:Cast_expression=cast_expression (Multiplicative_expressionR=multiplicative_expressionR)? 
+;
+assignment_expression 
+	:conditional_expression
+	|Unary_expression=unary_expression Assignment_operator=assignment_operator (rec += assignment_expression)* 
+;
+
+assignment_operator
+	:'=' 
+	|'*=' 
+	|'/=' 
+	|'%=' 
+	|'+=' 
+	|'-=' 
+	|'<<=' 
+	|'>>=' 
+	|'&=' 
+	|'^=' 
+	|'|=' 
+;
+
+
+
+
+cast_expression
+	:unary_expression 
+	|'(' Type_name=type_name ')' (rec += cast_expression)* 
+;
+
+unary_expression
+	:postfix_expression 
+	|INC_OP (rec += unary_expression)* 
+	|DEC_OP (rec += unary_expression)*
+	|Unary_operator=unary_operator ce=cast_expression
+;
+
+postfix_expression
+	:Primary_expression=primary_expression (Postfix_expressionR=postfix_expressionR)? 
+	|'(' Type_name=type_name ')' '{' Initializer_list=initializer_list '}' (Postfix_expressionR=postfix_expressionR)? 
+	|'(' Type_name=type_name ')' '{' Initializer_list=initializer_list ',' '}' (Postfix_expressionR=postfix_expressionR)? 
+;
+
+initializer
+	:'{' initializer_list '}' 
+	|'{' initializer_list ',' '}' 
+	|assignment_expression 
+;
+
+initializer_list
+	:Designation=designation Initializer=initializer (il=initializer_listR)? 
+	|Initializer=initializer (ilr=initializer_listR)? 
+;
+
+initializer_listR
+	:',' Designation=designation Initializer=initializer (rec += initializer_listR)* 
+	|',' Initializer=initializer (rec += initializer_listR)* 
+;
+
+designation
+	:designator_list '=' 
+;
+
+designator_list
+	:Designator=designator (DesignatorR=designator_listR)? 
+;
+
+designator_listR
+	:Designator=designator (rec += designator_listR)*
+;
+
+designator
+	:'[' constant_expression ']' 
+	|'.' IDENTIFIER 
+;
+
+constant_expression
+	:conditional_expression 
+;
+
+unary_operator
+	:'&' 
+	|'*' 
+	|'+' 
+	|'-' 
+	|'~' 
+	|'!' 
+;
+
+type_name
+	:Specifier_qualifier_list=specifier_qualifier_list ad=abstract_declarator 
+	|specifier_qualifier_list 
+;
+
+specifier_qualifier_list
+	:Type_specifier=type_specifier (rec += specifier_qualifier_list)* 
+	|type_qualifier 
+;
+
+type_specifier
+	:'VOID' 
+	|'CHAR' 
+	|'SHORT' 
+	| 'INT'
+	|'LONG' 
+	|'FLOAT' 
+	|'DOUBLE'
+	|'SIGNED' 
+	|'UNSIGNED' 
+	|'BOOL' 
+	|'COMPLEX' 
+	|'IMAGINARY' 
+	|atomic_type_specifier
+	|'TYPEDEF_NAME' 
+;
+
+atomic_type_specifier
+	:'ATOMIC' '(' type_name ')' 
+;
+
+
+postfix_expressionR
+	:'[' Expression=expression ']' (rec += postfix_expressionR)* 
+	|'(' ')' (rec += postfix_expressionR)*
+	|'(' Argument_expression_list=argument_expression_list ')' (rec += postfix_expressionR)* 
+	|'.' IDENTIFIER (rec += postfix_expressionR)* 
+	|'->' IDENTIFIER (rec += postfix_expressionR)* 
+	|INC_OP (rec += postfix_expressionR)* 
+	|DEC_OP (rec += postfix_expressionR)* 
+;
+
+
+argument_expression_list
+	:Assignment_expression=assignment_expression (Argument_expression_listR=argument_expression_listR)? 
+;
+
+argument_expression_listR
+	:',' Assignment_expression=assignment_expression (rec += argument_expression_listR)* 
+;
+	
+primary_expression
+	:IDENTIFIER
+	|constant 
+	|'(' expression ')'
+	|{StringC} string=STRING_C
+;
+
+
+constant
+	:INTEGER_NUMBER 
+	|DOUBLE_NUMBER 
+;
+
+
+DOUBLE_NUMBER:
+	INTEGER_NUMBER '.' INTEGER_NUMBER
+;
+
+
+IDENTIFIER:
+	name=ID
+;
+
+terminal INC_OP: '++';
+terminal DEC_OP: '--';
+terminal INTEGER_NUMBER: ('0'..'9')*;
+terminal fragment SINGLE_QUOTES: "'";
+terminal STRING_C returns ecore::EString: SINGLE_QUOTES ((!"'")|"''")* SINGLE_QUOTES;
